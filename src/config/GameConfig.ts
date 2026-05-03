@@ -1,0 +1,16 @@
+export const GAME_WIDTH = 1280;
+export const GAME_HEIGHT = 720;
+export const GROUND_Y = 600;
+
+export const FIGHTER = {
+  walkSpeed: 200,
+  backWalkSpeed: 150,
+  jumpVelocity: -750,
+  gravity: 1800,
+  width: 80,
+  height: 180,
+};
+
+// Must exceed the largest MotionDetector windowFrames (15) so inputs aren't
+// pruned before detection can see them.
+export const INPUT_BUFFER_FRAMES = 20;
