@@ -6,6 +6,7 @@ import { FIGHTER, INPUT_BUFFER_FRAMES } from '../config/GameConfig';
 import { Box, FrameData } from './BoxDef';
 import { FIGHTER_ANIMS } from '../data/FighterAnimations';
 import { MOTIONS, MotionDetector } from './MotionDetector';
+import { InputSource } from './InputSource';
 
 export class Fighter {
   scene: Phaser.Scene;
@@ -240,22 +241,20 @@ export class Fighter {
     return r;
   }
 
-  private keyMap: Record<string, InputAction>;
-  keys: Record<string, Phaser.Input.Keyboard.Key> = {};
-  private prevKeyState: Record<string, boolean> = {};
+  private inputSource: InputSource;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     color: number,
-    keyMap: Record<string, InputAction>,
+    inputSource: InputSource,
     facing: 1 | -1 = 1,
   ) {
-    this.scene   = scene;
-    this.keyMap  = keyMap;
-    this.facing  = facing;
-    this.buffer  = new InputBuffer(INPUT_BUFFER_FRAMES);
+    this.scene       = scene;
+    this.inputSource = inputSource;
+    this.facing      = facing;
+    this.buffer      = new InputBuffer(INPUT_BUFFER_FRAMES);
 
     this.baseColor = color;
     this.sprite = scene.add.rectangle(x, y, FIGHTER.width, FIGHTER.height, color);
@@ -263,11 +262,6 @@ export class Fighter {
     this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
     this.body.setGravityY(FIGHTER.gravity);
     this.body.setCollideWorldBounds(true);
-
-    for (const key of Object.keys(keyMap)) {
-      this.keys[key] = scene.input.keyboard!.addKey(key);
-      this.prevKeyState[key] = false;
-    }
   }
 
   update() {
@@ -280,33 +274,22 @@ export class Fighter {
   }
 
   private pollInputs() {
-    for (const [key, action] of Object.entries(this.keyMap)) {
-      const isDown  = this.keys[key].isDown;
-      const wasDown = this.prevKeyState[key];
-
-      // Translate Forward/Back based on facing direction
+    for (const { action, pressed } of this.inputSource.poll()) {
       let resolved = action;
       if (this.facing === -1) {
         if (action === InputAction.Forward) resolved = InputAction.Back;
         else if (action === InputAction.Back) resolved = InputAction.Forward;
       }
-
-      if (isDown && !wasDown)  this.buffer.record(resolved, true);
-      else if (!isDown && wasDown) this.buffer.record(resolved, false);
-      this.prevKeyState[key] = isDown;
+      this.buffer.record(resolved, pressed);
     }
   }
 
   private isHeld(action: InputAction): boolean {
-    for (const [key, mapped] of Object.entries(this.keyMap)) {
-      let resolved = mapped;
-      if (this.facing === -1) {
-        if (mapped === InputAction.Forward) resolved = InputAction.Back;
-        else if (mapped === InputAction.Back) resolved = InputAction.Forward;
-      }
-      if (resolved === action && this.keys[key].isDown) return true;
-    }
-    return false;
+    // Convert facing-relative action to the raw (physical) action the source understands.
+    const raw = (this.facing === -1 && action === InputAction.Forward) ? InputAction.Back
+              : (this.facing === -1 && action === InputAction.Back)    ? InputAction.Forward
+              : action;
+    return this.inputSource.isDown(raw);
   }
 
   private updateState() {
@@ -441,15 +424,13 @@ export class Fighter {
 
   getHeldDirections(): Set<InputAction> {
     const held = new Set<InputAction>();
-    for (const [key, mapped] of Object.entries(this.keyMap)) {
-      if (this.keys[key].isDown) {
-        let resolved = mapped;
-        if (this.facing === -1) {
-          if (mapped === InputAction.Forward) resolved = InputAction.Back;
-          else if (mapped === InputAction.Back) resolved = InputAction.Forward;
-        }
-        held.add(resolved);
-      }
+    const all: InputAction[] = [
+      InputAction.Up, InputAction.Down, InputAction.Forward, InputAction.Back,
+      InputAction.LP, InputAction.MP, InputAction.HP,
+      InputAction.LK, InputAction.MK, InputAction.HK,
+    ];
+    for (const action of all) {
+      if (this.isHeld(action)) held.add(action);
     }
     return held;
   }

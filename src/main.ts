@@ -8,5 +8,6 @@ new Phaser.Game({
   height: GAME_HEIGHT,
   backgroundColor: '#1a1a2e',
   physics: { default: 'arcade', arcade: { debug: true } },
+  input: { gamepad: true },
   scene: [FightScene],
 });

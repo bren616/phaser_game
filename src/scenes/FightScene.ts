@@ -3,6 +3,9 @@ import { Fighter } from '../fighter/Fighter';
 import { Projectile } from '../fighter/Projectile';
 import { FIGHTER, GAME_WIDTH, GROUND_Y } from '../config/GameConfig';
 import { P1_KEYS, P2_KEYS } from '../config/Inputs';
+import { CompositeInputSource } from '../fighter/InputSource';
+import { KeyboardInputSource } from '../fighter/KeyboardInputSource';
+import { GamepadInputSource } from '../fighter/GamepadInputSource';
 
 const BAR_W    = 480;
 const BAR_H    = 28;
@@ -53,8 +56,18 @@ export class FightScene extends Phaser.Scene {
     const ground = this.add.rectangle(GAME_WIDTH / 2, GROUND_Y + 60, GAME_WIDTH, 120, 0x333333);
     this.physics.add.existing(ground, true);
 
-    this.player1 = new Fighter(this, P1_START_X, START_Y, 0xff5555, P1_KEYS,  1);
-    this.player2 = new Fighter(this, P2_START_X, START_Y, 0x5555ff, P2_KEYS, -1);
+    const gp = this.input.gamepad!;
+    const p1Input = new CompositeInputSource(
+      new KeyboardInputSource(this, P1_KEYS),
+      new GamepadInputSource(gp, 0),
+    );
+    const p2Input = new CompositeInputSource(
+      new KeyboardInputSource(this, P2_KEYS),
+      new GamepadInputSource(gp, 1),
+    );
+
+    this.player1 = new Fighter(this, P1_START_X, START_Y, 0xff5555, p1Input,  1);
+    this.player2 = new Fighter(this, P2_START_X, START_Y, 0x5555ff, p2Input, -1);
 
     this.physics.add.collider(this.player1.sprite, ground);
     this.physics.add.collider(this.player2.sprite, ground);
