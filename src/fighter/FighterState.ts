@@ -12,8 +12,12 @@ export enum FighterStateName {
   AttackJumpLP    = 'attackJumpLP',
   AttackHadouken  = 'attackHadouken',
   AttackShoryuken = 'attackShoryuken',
+  AttackThrow      = 'attackThrow',
+  DashForward      = 'dashForward',
+  DashBack         = 'dashBack',
   HitStun          = 'hitstun',
   BlockStun        = 'blockstun',
-  KnockdownFall    = 'knockdownFall',    // airborne after knockdown hit
-  KnockdownGround  = 'knockdownGround',  // lying on the ground
+  KnockdownFall    = 'knockdownFall',
+  KnockdownGround  = 'knockdownGround',
+  WakeUp           = 'wakeUp',           // invincible rising frames after knockdown
 }

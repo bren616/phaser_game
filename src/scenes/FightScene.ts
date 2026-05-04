@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { Fighter } from '../fighter/Fighter';
 import { Projectile } from '../fighter/Projectile';
-import { GAME_WIDTH, GROUND_Y } from '../config/GameConfig';
+import { FIGHTER, GAME_WIDTH, GROUND_Y } from '../config/GameConfig';
 import { P1_KEYS, P2_KEYS } from '../config/Inputs';
 
 const BAR_W    = 480;
@@ -10,8 +10,12 @@ const BAR_Y    = 20;
 const P1_BAR_X = 20;
 const P2_BAR_X = GAME_WIDTH - 20;
 
-const WINS_TO_MATCH    = 2;
-const ROUND_OVER_DELAY = 180;
+const WINS_TO_MATCH     = 2;
+const ROUND_OVER_DELAY  = 180;
+const ROUND_TIME_FRAMES = 99 * 60;
+const INTRO_ROUND_FRAMES = 80;  // frames showing "ROUND X"
+const INTRO_FIGHT_FRAMES = 40;  // frames showing "FIGHT!"
+const INTRO_TOTAL_FRAMES = INTRO_ROUND_FRAMES + INTRO_FIGHT_FRAMES;
 const P1_START_X = 350;
 const P2_START_X = 930;
 const START_Y    = 400;
@@ -29,9 +33,17 @@ export class FightScene extends Phaser.Scene {
   private koText!:        Phaser.GameObjects.Text;
   private winnerText!:    Phaser.GameObjects.Text;
   private winsText!:      Phaser.GameObjects.Text;
+  private timerText!:     Phaser.GameObjects.Text;
+  private roundText!:     Phaser.GameObjects.Text; // "ROUND X"
+  private fightText!:     Phaser.GameObjects.Text; // "FIGHT!"
+  private p1ComboText!:   Phaser.GameObjects.Text;
+  private p2ComboText!:   Phaser.GameObjects.Text;
 
-  private roundState: 'fighting' | 'roundOver' | 'matchOver' = 'fighting';
-  private roundTimer = 0;
+  private roundState: 'intro' | 'fighting' | 'roundOver' | 'matchOver' = 'intro';
+  private roundTimer      = 0;
+  private roundTimeFrames = ROUND_TIME_FRAMES;
+  private introTimer      = 0;
+  private roundNumber     = 0;
   private p1Wins = 0;
   private p2Wins = 0;
 
@@ -54,7 +66,27 @@ export class FightScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: '16px', color: '#ffffff',
     });
 
-    this.koText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT_HALF, 'K.O.!', {
+    this.timerText = this.add.text(GAME_WIDTH / 2, BAR_Y, '99', {
+      fontFamily: 'Arial Black', fontSize: '28px', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5, 0);
+
+    this.winsText = this.add.text(GAME_WIDTH / 2, BAR_Y + BAR_H + 6, '', {
+      fontFamily: 'monospace', fontSize: '16px', color: '#ffffff',
+    }).setOrigin(0.5, 0);
+
+    // Combo counters — shown below each fighter's bar on the attacker's side.
+    this.p1ComboText = this.add.text(P1_BAR_X + BAR_W / 2, BAR_Y + BAR_H + 30, '', {
+      fontFamily: 'Arial Black', fontSize: '22px', color: '#ffee44',
+      stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5, 0).setVisible(false);
+
+    this.p2ComboText = this.add.text(P2_BAR_X - BAR_W / 2, BAR_Y + BAR_H + 30, '', {
+      fontFamily: 'Arial Black', fontSize: '22px', color: '#ffee44',
+      stroke: '#000000', strokeThickness: 4,
+    }).setOrigin(0.5, 0).setVisible(false);
+
+    this.koText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT_HALF, '', {
       fontFamily: 'Arial Black', fontSize: '96px', color: '#ffff00',
       stroke: '#000000', strokeThickness: 8,
     }).setOrigin(0.5).setVisible(false);
@@ -64,13 +96,23 @@ export class FightScene extends Phaser.Scene {
       stroke: '#000000', strokeThickness: 6,
     }).setOrigin(0.5).setVisible(false);
 
-    this.winsText = this.add.text(GAME_WIDTH / 2, BAR_Y, '', {
-      fontFamily: 'monospace', fontSize: '18px', color: '#ffffff',
-    }).setOrigin(0.5, 0);
+    this.roundText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT_HALF - 60, '', {
+      fontFamily: 'Arial Black', fontSize: '72px', color: '#ffffff',
+      stroke: '#000000', strokeThickness: 6,
+    }).setOrigin(0.5).setVisible(false);
+
+    this.fightText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT_HALF, 'FIGHT!', {
+      fontFamily: 'Arial Black', fontSize: '96px', color: '#ff4444',
+      stroke: '#000000', strokeThickness: 8,
+    }).setOrigin(0.5).setVisible(false);
+
+    this.beginRoundIntro();
   }
 
   update() {
-    if (this.roundState === 'fighting') {
+    if (this.roundState === 'intro') {
+      this.updateIntro();
+    } else if (this.roundState === 'fighting') {
       this.updateFighting();
     } else if (this.roundState === 'roundOver') {
       this.roundTimer--;
@@ -84,31 +126,60 @@ export class FightScene extends Phaser.Scene {
     this.drawProjectiles();
   }
 
+  // --- Round intro ---
+
+  private beginRoundIntro() {
+    this.roundNumber++;
+    this.introTimer = INTRO_TOTAL_FRAMES;
+    this.roundState = 'intro';
+    this.roundText.setText(`ROUND ${this.roundNumber}`).setVisible(true);
+    this.fightText.setVisible(false);
+  }
+
+  private updateIntro() {
+    this.introTimer--;
+    if (this.introTimer === INTRO_FIGHT_FRAMES) {
+      this.roundText.setVisible(false);
+      this.fightText.setVisible(true);
+    }
+    if (this.introTimer <= 0) {
+      this.fightText.setVisible(false);
+      this.roundState = 'fighting';
+    }
+  }
+
+  // --- Main fight loop ---
+
   private updateFighting() {
+    this.roundTimeFrames--;
+    if (this.roundTimeFrames <= 0) { this.endRound(true); return; }
+
     const p1FacesRight = this.player1.sprite.x <= this.player2.sprite.x;
     this.player1.setFacing(p1FacesRight ? 1 : -1);
     this.player2.setFacing(p1FacesRight ? -1 : 1);
 
+    this.player1.opponentX = this.player2.sprite.x;
+    this.player2.opponentX = this.player1.sprite.x;
+
     this.player1.update();
     this.player2.update();
 
-    // Spawn any projectiles requested by fighters this frame.
+    this.checkThrow(this.player1, this.player2);
+    this.checkThrow(this.player2, this.player1);
+    this.applyCornerPush();
+
     this.spawnPendingProjectiles(this.player1);
     this.spawnPendingProjectiles(this.player2);
 
-    // Update and cull out-of-bounds projectiles.
     for (const p of this.projectiles) p.update(GAME_WIDTH);
     this.projectiles = this.projectiles.filter(p => p.alive);
 
-    // Fighter vs fighter hit detection.
     this.checkFighterHits(this.player1, this.player2);
     this.checkFighterHits(this.player2, this.player1);
-
-    // Projectile vs fighter hit detection.
     this.checkProjectileHits(this.player1, this.player2);
     this.checkProjectileHits(this.player2, this.player1);
 
-    if (this.player1.isDead() || this.player2.isDead()) this.endRound();
+    if (this.player1.isDead() || this.player2.isDead()) this.endRound(false);
 
     this.debugText.setText([
       `P1  state: ${this.player1.state}  hp: ${this.player1.hp}`,
@@ -116,27 +187,52 @@ export class FightScene extends Phaser.Scene {
     ]);
   }
 
+  // --- Hit / throw helpers ---
+
+  private checkThrow(attacker: Fighter, defender: Fighter) {
+    if (!attacker.justStartedThrow) return;
+    if (!defender.isThrowable()) return;
+    const landX = attacker.sprite.x + 90 * attacker.facing;
+    defender.receiveThrow(landX, attacker.facing);
+    attacker.flash(6, 0xffdd88);
+    defender.flash(8, 0xffffff);
+    this.cameras.main.shake(120, 0.005);
+  }
+
+  private applyCornerPush() {
+    const b1 = this.player1.body;
+    const b2 = this.player2.body;
+    if (!(b1.blocked.down || b1.touching.down)) return;
+    if (!(b2.blocked.down || b2.touching.down)) return;
+    const cx1  = this.player1.sprite.x;
+    const cx2  = this.player2.sprite.x;
+    const dist = Math.abs(cx1 - cx2);
+    const min  = FIGHTER.width;
+    if (dist >= min) return;
+    const push = (min - dist) / 2 + 0.5;
+    if (cx1 < cx2) { this.player1.nudge(-push); this.player2.nudge(push);  }
+    else           { this.player1.nudge(push);  this.player2.nudge(-push); }
+  }
+
   private spawnPendingProjectiles(fighter: Fighter) {
     const req = fighter.consumeProjectileRequest();
-    if (req) {
-      this.projectiles.push(
-        new Projectile(this, req.x, req.y, req.vx, fighter)
-      );
-    }
+    if (req) this.projectiles.push(new Projectile(this, req.x, req.y, req.vx, fighter));
   }
 
   private checkFighterHits(attacker: Fighter, defender: Fighter) {
     if (!attacker.canHit()) return;
-    const fd       = attacker.getActiveFrameData();
-    const damage   = fd?.damage    ?? 10;
-    const hitstun  = fd?.hitstun   ?? 15;
+    const fd        = attacker.getActiveFrameData();
+    const damage    = fd?.damage    ?? 10;
+    const hitstun   = fd?.hitstun   ?? 15;
     const knockdown = fd?.knockdown ?? false;
-
     for (const hit of attacker.getWorldHitboxes()) {
       for (const hurt of defender.getWorldHurtboxes()) {
         if (overlaps(hit, hurt)) {
           attacker.registerHit();
+          const blocked = defender.isBlocking();
           defender.receiveHit(300 * attacker.facing, hitstun, damage, knockdown);
+          defender.flash(blocked ? 4 : 6, blocked ? 0xaaddff : 0xffffff);
+          this.cameras.main.shake(knockdown ? 150 : 60, knockdown ? 0.006 : 0.003);
           return;
         }
       }
@@ -150,34 +246,54 @@ export class FightScene extends Phaser.Scene {
       for (const hurt of target.getWorldHurtboxes()) {
         if (overlaps(hit, hurt)) {
           proj.destroy();
+          const blocked = target.isBlocking();
           target.receiveHit(200 * owner.facing, proj.hitstun, proj.damage);
+          target.flash(blocked ? 4 : 6, blocked ? 0xaaddff : 0xffffff);
+          this.cameras.main.shake(60, 0.003);
           return;
         }
       }
     }
   }
 
-  private endRound() {
+  // --- Round management ---
+
+  private endRound(timeover: boolean) {
     this.roundState = 'roundOver';
     this.roundTimer = ROUND_OVER_DELAY;
 
-    const p1Dead = this.player1.isDead();
-    const winner = p1Dead ? 'P2' : 'P1';
-    if (p1Dead) this.p2Wins++; else this.p1Wins++;
+    let winner: string;
+    if (timeover) {
+      winner = this.player1.hp > this.player2.hp ? 'P1'
+             : this.player2.hp > this.player1.hp ? 'P2'
+             : 'DRAW';
+    } else {
+      winner = this.player1.isDead() ? 'P2' : 'P1';
+    }
 
-    this.koText.setVisible(true);
+    if (winner !== 'DRAW') {
+      if (winner === 'P1') this.p1Wins++; else this.p2Wins++;
+    }
 
-    if (this.p1Wins >= WINS_TO_MATCH || this.p2Wins >= WINS_TO_MATCH) {
+    this.koText.setText(timeover ? 'TIME!' : 'K.O.!').setVisible(true);
+
+    const matchWon = winner !== 'DRAW' &&
+      (this.p1Wins >= WINS_TO_MATCH || this.p2Wins >= WINS_TO_MATCH);
+
+    if (matchWon) {
       this.roundState = 'matchOver';
       this.winnerText.setText(`${winner} Wins the Match!`).setVisible(true);
     } else {
-      this.winnerText.setText(`${winner} wins the round`).setVisible(true);
+      this.winnerText.setText(
+        winner === 'DRAW' ? 'DRAW' : `${winner} wins the round`
+      ).setVisible(true);
     }
   }
 
   private startNewRound() {
     for (const p of this.projectiles) p.destroy();
-    this.projectiles = [];
+    this.projectiles     = [];
+    this.roundTimeFrames = ROUND_TIME_FRAMES;
 
     this.player1.resetForRound(P1_START_X, START_Y);
     this.player2.resetForRound(P2_START_X, START_Y);
@@ -186,8 +302,10 @@ export class FightScene extends Phaser.Scene {
 
     this.koText.setVisible(false);
     this.winnerText.setVisible(false);
-    this.roundState = 'fighting';
+    this.beginRoundIntro();
   }
+
+  // --- HUD ---
 
   private drawHud() {
     this.hudGraphics.clear();
@@ -201,19 +319,36 @@ export class FightScene extends Phaser.Scene {
     this.hudGraphics.fillStyle(0x333333).fillRect(P2_BAR_X - BAR_W, BAR_Y, BAR_W, BAR_H);
     this.hudGraphics.fillStyle(0x2222cc).fillRect(P2_BAR_X - p2FillW, BAR_Y, p2FillW, BAR_H);
 
+    const secs = Math.ceil(this.roundTimeFrames / 60);
+    this.timerText.setText(this.roundState === 'fighting' ? String(secs) : '');
     this.winsText.setText(
       pips(this.p1Wins, WINS_TO_MATCH) + '   vs   ' + pips(this.p2Wins, WINS_TO_MATCH)
     );
+
+    // Combo display: P1 attacking P2 shows on P1 side; P2 attacking P1 shows on P2 side.
+    const p1Attack = this.player2.comboCount;
+    const p2Attack = this.player1.comboCount;
+
+    if (p1Attack >= 2) {
+      this.p1ComboText.setText(`${p1Attack} HIT`).setVisible(true);
+    } else {
+      this.p1ComboText.setVisible(false);
+    }
+    if (p2Attack >= 2) {
+      this.p2ComboText.setText(`${p2Attack} HIT`).setVisible(true);
+    } else {
+      this.p2ComboText.setVisible(false);
+    }
   }
+
+  // --- Debug rendering ---
 
   private drawBoxes(fighter: Fighter) {
     const frame = fighter.getActiveFrameData();
     if (!frame) return;
-
     const bx   = fighter.sprite.x;
     const by   = fighter.sprite.y + fighter.sprite.height / 2;
     const flip = fighter.facing === -1;
-
     for (const box of frame.hurtboxes) {
       const wx = flip ? bx - box.x - box.w : bx + box.x;
       this.debugGraphics.lineStyle(2, 0x00ff00, 1);

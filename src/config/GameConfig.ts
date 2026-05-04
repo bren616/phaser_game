@@ -5,10 +5,12 @@ export const GROUND_Y = 600;
 export const FIGHTER = {
   walkSpeed: 200,
   backWalkSpeed: 150,
+  dashSpeed: 600,
   jumpVelocity: -750,
   gravity: 1800,
   width: 80,
   height: 180,
+  throwRange: 105, // max distance (center-to-center) for a throw to connect
 };
 
 // Must exceed the largest MotionDetector windowFrames (15) so inputs aren't

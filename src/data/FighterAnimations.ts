@@ -27,6 +27,30 @@ export const FIGHTER_ANIMS: Partial<Record<FighterStateName, AnimDef>> = {
   [FighterStateName.JumpAir]:     [{ duration: HOLD, hurtboxes: AIR_HURTBOX,    hitboxes: [] }],
   [FighterStateName.Land]:        [{ duration: HOLD, hurtboxes: STAND_HURTBOX,  hitboxes: [] }],
 
+  // Throw: 3f startup | 20f animation | 5f recovery — no hitbox, proximity-based landing.
+  [FighterStateName.AttackThrow]: [
+    { duration: 3,  hurtboxes: STAND_HURTBOX, hitboxes: [] },
+    { duration: 20, hurtboxes: STAND_HURTBOX, hitboxes: [] },
+    { duration: 5,  hurtboxes: STAND_HURTBOX, hitboxes: [] },
+  ],
+
+  // Dashes: 3f startup | active (moving) | 6f recovery
+  [FighterStateName.DashForward]: [
+    { duration: 3,  hurtboxes: STAND_HURTBOX, hitboxes: [] }, // startup
+    { duration: 12, hurtboxes: STAND_HURTBOX, hitboxes: [] }, // slide
+    { duration: 6,  hurtboxes: STAND_HURTBOX, hitboxes: [] }, // recovery
+  ],
+  [FighterStateName.DashBack]: [
+    { duration: 3,  hurtboxes: STAND_HURTBOX, hitboxes: [] }, // startup (invincible)
+    { duration: 10, hurtboxes: STAND_HURTBOX, hitboxes: [] }, // slide
+    { duration: 6,  hurtboxes: STAND_HURTBOX, hitboxes: [] }, // recovery
+  ],
+
+  // Wake-up: 10 invincible frames while rising from knockdown.
+  [FighterStateName.WakeUp]: [
+    { duration: 10, hurtboxes: STAND_HURTBOX, hitboxes: [] },
+  ],
+
   // Blockstun / Hitstun: timer-controlled, single held frame.
   [FighterStateName.BlockStun]: [{ duration: HOLD, hurtboxes: STAND_HURTBOX, hitboxes: [] }],
   [FighterStateName.HitStun]:   [{ duration: HOLD, hurtboxes: STAND_HURTBOX, hitboxes: [] }],
