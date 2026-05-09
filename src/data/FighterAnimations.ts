@@ -11,7 +11,7 @@ const AIR_HURTBOX    = [{ x: -28, y: -172, w: 56, h: 172 }];
 // Hitboxes — all x values are facing-relative (positive = toward opponent).
 const LP_HITBOX        = [{ x: 25, y: -95, w: 50, h: 28  }]; // standing LP fist
 const CROUCH_LP_HITBOX = [{ x: 22, y: -32,  w: 46, h: 22  }]; // low poke near the ground
-const HP_HITBOX        = [{ x: 24, y: -158, w: 66, h: 38  }]; // heavy punch: wider, taller
+const HP_HITBOX        = [{ x: 24, y: -108, w: 66, h: 38  }]; // heavy punch: wider, taller
 const SHORYUKEN_HITBOX = [{ x:  8, y: -230, w: 38, h: 120 }]; // tall vertical uppercut arc
 const JUMP_LP_HITBOX   = [{ x: 10, y: -150, w: 42, h: 55  }]; // diving jab — forward and downward reach
 
@@ -96,8 +96,8 @@ export const FIGHTER_ANIMS: Partial<Record<FighterStateName, AnimDef>> = {
 
   // Standing HP: 8f startup | 4f active | 14f recovery — slow but heavy
   [FighterStateName.AttackStandHP]: [
-    { duration: 8,  hurtboxes: STAND_HURTBOX, hitboxes: []       },
-    { duration: 4,  hurtboxes: STAND_HURTBOX, hitboxes: HP_HITBOX, damage: 20, hitstun: 20, knockdown: true },
-    { duration: 14, hurtboxes: STAND_HURTBOX, hitboxes: []       },
+    { duration: 16, hurtboxes: STAND_HURTBOX, hitboxes: []       },
+    { duration: 12, hurtboxes: STAND_HURTBOX, hitboxes: HP_HITBOX, damage: 20, hitstun: 20, knockdown: true },
+    { duration: 28, hurtboxes: STAND_HURTBOX, hitboxes: []       },
   ],
 };

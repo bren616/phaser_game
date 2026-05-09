@@ -203,6 +203,8 @@ export class Fighter {
         return { key: 'fighter-jumpair', frame: this.visualFrameIdx };
       case FighterStateName.AttackLP:
         return { key: 'fighter-attackLP', frame: Math.min(this.animFrameIdx, 2) };
+      case FighterStateName.AttackStandHP:
+        return { key: 'fighter-attackStandHP', frame: Math.min(this.animFrameIdx, 2) };
       default:
         return { key: 'fighter-idle', frame: this.visualFrameIdx };
     }

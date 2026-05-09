@@ -57,7 +57,8 @@ export class FightScene extends Phaser.Scene {
     this.load.spritesheet('fighter-idle',     'assets/skele-idle-v2.png',     { frameWidth: 256, frameHeight: 256 });
     this.load.spritesheet('fighter-walk',     'assets/skele-walk-v2.png',     { frameWidth: 256, frameHeight: 256 });
     this.load.spritesheet('fighter-attackLP', 'assets/skele-attackLP-v2.png', { frameWidth: 256, frameHeight: 256 });
-    this.load.spritesheet('fighter-jumpair',  'assets/skele-jumpair-v2.png',  { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-jumpair',      'assets/skele-jumpair-v2.png',      { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-attackStandHP', 'assets/skele-attackStandHP-v2.png', { frameWidth: 256, frameHeight: 256 });
   }
 
   create() {
