@@ -8,21 +8,52 @@ import { FIGHTER_ANIMS } from '../data/FighterAnimations';
 import { MOTIONS, MotionDetector } from './MotionDetector';
 import { InputSource } from './InputSource';
 
+// How many atlas frames exist per state. States not listed use idle_0000.png as placeholder.
+const SPRITE_FRAME_COUNTS: Partial<Record<FighterStateName, number>> = {
+  [FighterStateName.Idle]:           4,
+  [FighterStateName.WalkForward]:    6,
+  [FighterStateName.JumpAir]:        3,
+  [FighterStateName.AttackLP]:       3,
+  [FighterStateName.AttackCrouchLP]: 3,
+  [FighterStateName.AttackStandHP]:  3,
+  [FighterStateName.AttackJumpLP]:   3,
+  [FighterStateName.AttackHadouken]: 2,
+};
+
+// States where the visual frame index should match the game-logic animFrameIdx (1:1 per phase).
+const PHASED_STATES = new Set<FighterStateName>([
+  FighterStateName.AttackLP,
+  FighterStateName.AttackCrouchLP,
+  FighterStateName.AttackStandHP,
+  FighterStateName.AttackJumpLP,
+  FighterStateName.AttackHadouken,
+  FighterStateName.AttackShoryuken,
+  FighterStateName.AttackThrow,
+  FighterStateName.DashForward,
+  FighterStateName.DashBack,
+  FighterStateName.WakeUp,
+]);
+
+// Game frames between visual frame advances for looping states (≈ 8 fps at 60 fps).
+const VISUAL_FRAME_DURATION = 8;
+
 export class Fighter {
   scene: Phaser.Scene;
-  sprite: Phaser.GameObjects.Rectangle; // placeholder until you have art
+  sprite: Phaser.GameObjects.Sprite;
   body: Phaser.Physics.Arcade.Body;
   buffer: InputBuffer;
-  facing: 1 | -1 = 1; // 1 = facing right
+  facing: 1 | -1 = 1;
 
-  // Set by FightScene each frame so Fighter can do proximity checks without a direct reference.
   opponentX = 0;
-  // True for exactly one frame when the throw animation starts; read by FightScene.
   justStartedThrow = false;
 
   private _state: FighterStateName = FighterStateName.Idle;
   private animFrameIdx  = 0;
   private animFrameTimer = 0;
+
+  // Visual frame cycling for looping states (idle, walk, jump).
+  private visualFrameIdx   = 0;
+  private visualFrameTimer = 0;
 
   get state(): FighterStateName { return this._state; }
 
@@ -31,6 +62,8 @@ export class Fighter {
     this._state         = next;
     this.animFrameIdx   = 0;
     this.animFrameTimer = 0;
+    this.visualFrameIdx   = 0;
+    this.visualFrameTimer = 0;
     this.hasHit         = false;
 
     if (next === FighterStateName.AttackShoryuken) {
@@ -40,19 +73,16 @@ export class Fighter {
     if (next === FighterStateName.AttackThrow) {
       this.justStartedThrow = true;
     }
-    // Returning to neutral ends any combo being done to this fighter.
     if (next === FighterStateName.Idle) {
       this.comboCount = 0;
     }
   }
 
-  // --- Hit detection API (called by the scene) ---
+  // --- Hit detection API ---
 
   canHit(): boolean { return !this.hasHit; }
-
   registerHit() { this.hasHit = true; }
 
-  // True when grounded and holding Back — the defender can block incoming hits.
   isBlocking(): boolean {
     const grounded = this.body.blocked.down || this.body.touching.down;
     return grounded && this.isHeld(InputAction.Back);
@@ -61,8 +91,6 @@ export class Fighter {
   receiveHit(knockbackVx: number, hitstunFrames = 15, damage = 10, knockdown = false) {
     if (this.isInvincible()) return;
     if (this.isBlocking()) {
-      // Blocked hits don't extend a combo.
-      // Block absorbs knockdown — just applies chip + blockstun.
       const chip = Math.max(1, Math.round(damage * 0.1));
       this.hp = Math.max(1, this.hp - chip);
       this.setState(FighterStateName.BlockStun);
@@ -85,7 +113,6 @@ export class Fighter {
 
   isDead(): boolean { return this.hp <= 0; }
 
-  // Can this fighter be grabbed right now?
   isThrowable(): boolean {
     const grounded = this.body.blocked.down || this.body.touching.down;
     return grounded
@@ -100,49 +127,49 @@ export class Fighter {
     if (this._state === FighterStateName.WakeUp) return;
     this.comboCount++;
     this.hp = Math.max(0, this.hp - 15);
-    // Reposition to the throw output point, then launch into knockdown
     this.body.reset(landX, this.sprite.y);
     this.setState(FighterStateName.KnockdownFall);
     this.body.setVelocityY(-280);
     this.body.setVelocityX(220 * attackerFacing);
   }
 
-  // Used by FightScene for corner push — adjusts both body and sprite in the same frame.
   nudge(dx: number) {
     this.body.x += dx;
-    this.sprite.x = this.body.x + this.body.halfWidth;
+    this.sprite.x += dx;
   }
 
-  // Briefly tint the sprite — white on hit, blue-white on block.
   flash(frames = 6, color = 0xffffff) {
     this.flashTimer = frames;
-    this.sprite.setFillStyle(color);
+    this.sprite.setTint(color);
   }
 
   private tickFlash() {
     if (this.flashTimer <= 0) return;
     this.flashTimer--;
-    if (this.flashTimer === 0) this.sprite.setFillStyle(this.baseColor);
+    if (this.flashTimer === 0) this.sprite.clearTint();
   }
 
   resetForRound(x: number, y: number) {
-    this.hp                  = this.maxHp;
-    this.comboCount          = 0;
-    this._state              = FighterStateName.Idle;
-    this.animFrameIdx        = 0;
-    this.animFrameTimer      = 0;
-    this.hasHit              = false;
-    this.hitstunTimer        = 0;
+    this.hp                   = this.maxHp;
+    this.comboCount           = 0;
+    this._state               = FighterStateName.Idle;
+    this.animFrameIdx         = 0;
+    this.animFrameTimer       = 0;
+    this.visualFrameIdx       = 0;
+    this.visualFrameTimer     = 0;
+    this.hasHit               = false;
+    this.hitstunTimer         = 0;
     this.knockdownGroundTimer = 0;
-    this.flashTimer          = 0;
-    this.sprite.setFillStyle(this.baseColor);
+    this.flashTimer           = 0;
+    this.sprite.clearTint();
     this.body.reset(x, y);
   }
 
   // Returns hitboxes/hurtboxes transformed into world space.
+  // Uses body coordinates directly so it works regardless of sprite canvas size.
   private toWorld(box: Box): Box {
-    const bx   = this.sprite.x;
-    const by   = this.sprite.y + this.sprite.height / 2;
+    const bx   = this.body.x + this.body.halfWidth;
+    const by   = this.body.y + this.body.height;
     const flip = this.facing === -1;
     return { x: flip ? bx - box.x - box.w : bx + box.x, y: by + box.y, w: box.w, h: box.h };
   }
@@ -160,15 +187,57 @@ export class Fighter {
       this.animFrameIdx++;
       this.animFrameTimer = 0;
 
-      // Spawn Hadouken projectile exactly when windup transitions to recovery.
       if (this._state === FighterStateName.AttackHadouken && prevIdx === 0) {
         this._projectileRequest = {
           x:  this.sprite.x + 50 * this.facing,
-          y:  this.sprite.y - 55, // roughly chest height
+          y:  this.body.y + this.body.halfHeight,
           vx: 420 * this.facing,
         };
       }
     }
+  }
+
+  // Advance the visual frame counter for looping states (idle, walk, jump).
+  private advanceVisualFrame() {
+    if (PHASED_STATES.has(this._state)) return; // attack states use animFrameIdx directly
+    const count = SPRITE_FRAME_COUNTS[this._state] ?? 0;
+    if (count <= 1) return;
+    this.visualFrameTimer++;
+    if (this.visualFrameTimer >= VISUAL_FRAME_DURATION) {
+      this.visualFrameTimer = 0;
+      this.visualFrameIdx = (this.visualFrameIdx + 1) % count;
+    }
+  }
+
+  // Resolve the atlas frame name for the current state and visual frame position.
+  private currentFrameName(): string {
+    const count = SPRITE_FRAME_COUNTS[this._state] ?? 0;
+    if (count === 0) return 'idle_0000.png'; // placeholder for states without art yet
+
+    let idx: number;
+    if (PHASED_STATES.has(this._state)) {
+      idx = Math.min(this.animFrameIdx, count - 1);
+    } else {
+      idx = this.visualFrameIdx % count;
+    }
+    return `${this._state}_${String(idx).padStart(4, '0')}.png`;
+  }
+
+  // Set the sprite frame and resize the physics body to match the new canvas.
+  // Assumes the character's feet sit at the bottom-center of each source canvas.
+  private applySpriteFrame() {
+    const frameName = this.currentFrameName();
+    this.sprite.setFrame(frameName);
+    this.sprite.setFlipX(this.facing === -1);
+
+    const f   = this.sprite.frame;
+    const srcW = f.realWidth;
+    const srcH = f.realHeight;
+    this.body.setSize(FIGHTER.width, FIGHTER.height, false);
+    this.body.setOffset(
+      (srcW - FIGHTER.width)  / 2,
+      srcH - FIGHTER.height,
+    );
   }
 
   getActiveFrameData(): FrameData | null {
@@ -190,14 +259,11 @@ export class Fighter {
     return this._state === FighterStateName.AttackJumpLP;
   }
 
-  // True when hits should be ignored (backdash startup, wake-up).
   isInvincible(): boolean {
     return this._state === FighterStateName.WakeUp
         || (this._state === FighterStateName.DashBack && this.animFrameIdx === 0);
   }
 
-  // Two presses of `action` within `windowFrames`, at least `minGap` frames apart,
-  // with the second press on the frame that was just polled.
   private justDoubleTapped(action: InputAction, windowFrames = 12, minGap = 3): boolean {
     const lastFrame = this.buffer.frame - 1;
     const presses = this.buffer.getRecent()
@@ -215,7 +281,6 @@ export class Fighter {
     return this.animFrameIdx >= last && this.animFrameTimer >= anim[last].duration;
   }
 
-  // Returns true if `action` was pressed on the frame that was just polled.
   private justPressed(action: InputAction): boolean {
     const lastFrame = this.buffer.frame - 1;
     return this.buffer.getRecent().some(
@@ -226,14 +291,12 @@ export class Fighter {
   readonly maxHp = 200;
   hp = 200;
 
-  comboCount                   = 0; // hits received in the current combo; reset on recovery
+  comboCount                   = 0;
   private hasHit               = false;
   private hitstunTimer         = 0;
   private knockdownGroundTimer = 0;
-  private flashTimer = 0;
-  private baseColor  = 0xffffff;
+  private flashTimer           = 0;
 
-  // Set by advanceAnim when a Hadouken enters its recovery frame; consumed by FightScene.
   private _projectileRequest: { x: number; y: number; vx: number } | null = null;
   consumeProjectileRequest() {
     const r = this._projectileRequest;
@@ -247,7 +310,7 @@ export class Fighter {
     scene: Phaser.Scene,
     x: number,
     y: number,
-    color: number,
+    _color: number,
     inputSource: InputSource,
     facing: 1 | -1 = 1,
   ) {
@@ -256,20 +319,22 @@ export class Fighter {
     this.facing      = facing;
     this.buffer      = new InputBuffer(INPUT_BUFFER_FRAMES);
 
-    this.baseColor = color;
-    this.sprite = scene.add.rectangle(x, y, FIGHTER.width, FIGHTER.height, color);
+    this.sprite = scene.add.sprite(x, y, 'fighter', 'idle_0000.png');
     scene.physics.add.existing(this.sprite);
     this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
     this.body.setGravityY(FIGHTER.gravity);
     this.body.setCollideWorldBounds(true);
+    this.applySpriteFrame(); // size body to match initial frame
   }
 
   update() {
-    this.justStartedThrow = false; // reset one-frame flag before this frame's logic
+    this.justStartedThrow = false;
     this.pollInputs();
     this.buffer.tick();
     this.updateState();
     this.advanceAnim();
+    this.advanceVisualFrame();
+    this.applySpriteFrame();
     this.tickFlash();
   }
 
@@ -285,7 +350,6 @@ export class Fighter {
   }
 
   private isHeld(action: InputAction): boolean {
-    // Convert facing-relative action to the raw (physical) action the source understands.
     const raw = (this.facing === -1 && action === InputAction.Forward) ? InputAction.Back
               : (this.facing === -1 && action === InputAction.Back)    ? InputAction.Forward
               : action;
@@ -295,7 +359,6 @@ export class Fighter {
   private updateState() {
     const grounded = this.body.blocked.down || this.body.touching.down;
 
-    // Hitstun / Blockstun: locked until timer expires, with decaying knockback.
     if (this._state === FighterStateName.HitStun ||
         this._state === FighterStateName.BlockStun) {
       this.body.setVelocityX(this.body.velocity.x * 0.75);
@@ -304,7 +367,6 @@ export class Fighter {
       return;
     }
 
-    // KnockdownFall: airborne — physics handles movement; wait for landing.
     if (this._state === FighterStateName.KnockdownFall) {
       if (grounded) {
         this.body.setVelocityX(0);
@@ -314,20 +376,17 @@ export class Fighter {
       return;
     }
 
-    // KnockdownGround: lying on the ground, count down then enter wake-up.
     if (this._state === FighterStateName.KnockdownGround) {
       this.knockdownGroundTimer--;
       if (this.knockdownGroundTimer <= 0) this.setState(FighterStateName.WakeUp);
       return;
     }
 
-    // WakeUp: invincible rising frames — wait for animation to finish then go idle.
     if (this._state === FighterStateName.WakeUp) {
       if (this.isAnimComplete()) this.setState(FighterStateName.Idle);
       return;
     }
 
-    // Dashes: apply velocity during active phase, run to completion.
     if (this._state === FighterStateName.DashForward || this._state === FighterStateName.DashBack) {
       const dir = this._state === FighterStateName.DashForward ? 1 : -1;
       this.body.setVelocityX(this.animFrameIdx === 1 ? FIGHTER.dashSpeed * dir * this.facing : 0);
@@ -335,7 +394,6 @@ export class Fighter {
       return;
     }
 
-    // Ground attacks: freeze horizontal movement; allow cancel into specials after a hit connects.
     if (this.isInGroundAttackState()) {
       this.body.setVelocityX(0);
       if (this.hasHit) {
@@ -353,15 +411,12 @@ export class Fighter {
       return;
     }
 
-    // Air attacks: preserve momentum; landing or anim end cancels to Idle.
     if (this.isInAirAttackState()) {
       if (grounded || this.isAnimComplete()) this.setState(FighterStateName.Idle);
       return;
     }
 
     if (grounded) {
-      // Dashes checked before specials/normals; double-tap won't conflict with DP because
-      // our DP uses held-direction for the final Forward step (only one press event).
       if (this.justDoubleTapped(InputAction.Forward)) {
         this.setState(FighterStateName.DashForward);
         return;
@@ -371,16 +426,13 @@ export class Fighter {
         return;
       }
 
-      // Throw: LP+LK on the same frame while close enough — unblockable, bypasses normals.
       if (this.justPressed(InputAction.LP) && this.justPressed(InputAction.LK)) {
         if (Math.abs(this.sprite.x - this.opponentX) <= FIGHTER.throwRange) {
           this.setState(FighterStateName.AttackThrow);
           return;
         }
-        // Out of range — fall through to LP normal so the input isn't wasted.
       }
 
-      // Specials are checked before normals so QCF+LP doesn't also fire a standing LP.
       const held = this.getHeldDirections();
       if (MotionDetector.detect(this.buffer, MOTIONS.QCF, InputAction.LP, 15, held)) {
         this.body.setVelocityX(0);
@@ -413,7 +465,6 @@ export class Fighter {
         this.setState(FighterStateName.Idle);
       }
     } else {
-      // Air — check for jump attack before falling back to JumpAir.
       if (this.justPressed(InputAction.LP)) {
         this.setState(FighterStateName.AttackJumpLP);
       } else {

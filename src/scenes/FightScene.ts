@@ -52,6 +52,10 @@ export class FightScene extends Phaser.Scene {
 
   constructor() { super('FightScene'); }
 
+  preload() {
+    this.load.multiatlas('fighter', 'assets/sprite_sheet.json', 'assets/');
+  }
+
   create() {
     const ground = this.add.rectangle(GAME_WIDTH / 2, GROUND_Y + 60, GAME_WIDTH, 120, 0x333333);
     this.physics.add.existing(ground, true);
@@ -357,20 +361,13 @@ export class FightScene extends Phaser.Scene {
   // --- Debug rendering ---
 
   private drawBoxes(fighter: Fighter) {
-    const frame = fighter.getActiveFrameData();
-    if (!frame) return;
-    const bx   = fighter.sprite.x;
-    const by   = fighter.sprite.y + fighter.sprite.height / 2;
-    const flip = fighter.facing === -1;
-    for (const box of frame.hurtboxes) {
-      const wx = flip ? bx - box.x - box.w : bx + box.x;
+    for (const box of fighter.getWorldHurtboxes()) {
       this.debugGraphics.lineStyle(2, 0x00ff00, 1);
-      this.debugGraphics.strokeRect(wx, by + box.y, box.w, box.h);
+      this.debugGraphics.strokeRect(box.x, box.y, box.w, box.h);
     }
-    for (const box of frame.hitboxes) {
-      const wx = flip ? bx - box.x - box.w : bx + box.x;
+    for (const box of fighter.getWorldHitboxes()) {
       this.debugGraphics.lineStyle(2, 0xff0000, 1);
-      this.debugGraphics.strokeRect(wx, by + box.y, box.w, box.h);
+      this.debugGraphics.strokeRect(box.x, box.y, box.w, box.h);
     }
   }
 
