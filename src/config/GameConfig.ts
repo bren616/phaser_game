@@ -8,7 +8,7 @@ export const FIGHTER = {
   dashSpeed: 600,
   jumpVelocity: -750,
   gravity: 1800,
-  width: 80,
+  width: 60,
   height: 180,
   throwRange: 105, // max distance (center-to-center) for a throw to connect
 };

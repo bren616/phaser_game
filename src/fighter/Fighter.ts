@@ -8,34 +8,17 @@ import { FIGHTER_ANIMS } from '../data/FighterAnimations';
 import { MOTIONS, MotionDetector } from './MotionDetector';
 import { InputSource } from './InputSource';
 
-// How many atlas frames exist per state. States not listed use idle_0000.png as placeholder.
-const SPRITE_FRAME_COUNTS: Partial<Record<FighterStateName, number>> = {
-  [FighterStateName.Idle]:           4,
-  [FighterStateName.WalkForward]:    6,
-  [FighterStateName.JumpAir]:        3,
-  [FighterStateName.AttackLP]:       3,
-  [FighterStateName.AttackCrouchLP]: 3,
-  [FighterStateName.AttackStandHP]:  3,
-  [FighterStateName.AttackJumpLP]:   3,
-  [FighterStateName.AttackHadouken]: 2,
+const LOOPING_FRAME_COUNTS: Partial<Record<FighterStateName, number>> = {
+  [FighterStateName.Idle]:        4,
+  [FighterStateName.WalkForward]: 4,
+  [FighterStateName.WalkBack]:    4,
+  [FighterStateName.JumpAir]:     3,
 };
 
-// States where the visual frame index should match the game-logic animFrameIdx (1:1 per phase).
-const PHASED_STATES = new Set<FighterStateName>([
-  FighterStateName.AttackLP,
-  FighterStateName.AttackCrouchLP,
-  FighterStateName.AttackStandHP,
-  FighterStateName.AttackJumpLP,
-  FighterStateName.AttackHadouken,
-  FighterStateName.AttackShoryuken,
-  FighterStateName.AttackThrow,
-  FighterStateName.DashForward,
-  FighterStateName.DashBack,
-  FighterStateName.WakeUp,
-]);
-
-// Game frames between visual frame advances for looping states (≈ 8 fps at 60 fps).
-const VISUAL_FRAME_DURATION = 8;
+// Game frames between visual frame advances for idle/walk (≈ 5 fps at 60 fps).
+const VISUAL_FRAME_DURATION = 12;
+// Game frames between visual frame advances for jump (≈ 5 fps at 60 fps).
+const JUMP_FRAME_DURATION = 32;
 
 export class Fighter {
   scene: Phaser.Scene;
@@ -199,35 +182,37 @@ export class Fighter {
 
   // Advance the visual frame counter for looping states (idle, walk, jump).
   private advanceVisualFrame() {
-    if (PHASED_STATES.has(this._state)) return; // attack states use animFrameIdx directly
-    const count = SPRITE_FRAME_COUNTS[this._state] ?? 0;
-    if (count <= 1) return;
+    const count = LOOPING_FRAME_COUNTS[this._state];
+    if (!count) return;
+    const duration = this._state === FighterStateName.JumpAir ? JUMP_FRAME_DURATION : VISUAL_FRAME_DURATION;
     this.visualFrameTimer++;
-    if (this.visualFrameTimer >= VISUAL_FRAME_DURATION) {
+    if (this.visualFrameTimer >= duration) {
       this.visualFrameTimer = 0;
       this.visualFrameIdx = (this.visualFrameIdx + 1) % count;
     }
   }
 
-  // Resolve the atlas frame name for the current state and visual frame position.
-  private currentFrameName(): string {
-    const count = SPRITE_FRAME_COUNTS[this._state] ?? 0;
-    if (count === 0) return 'idle_0000.png'; // placeholder for states without art yet
-
-    let idx: number;
-    if (PHASED_STATES.has(this._state)) {
-      idx = Math.min(this.animFrameIdx, count - 1);
-    } else {
-      idx = this.visualFrameIdx % count;
+  // Return the texture key and frame index for the current state.
+  private currentTexture(): { key: string; frame: number } {
+    switch (this._state) {
+      case FighterStateName.WalkForward:
+        return { key: 'fighter-walk', frame: this.visualFrameIdx };
+      case FighterStateName.WalkBack:
+        return { key: 'fighter-walk', frame: (LOOPING_FRAME_COUNTS[FighterStateName.WalkForward]! - 1) - this.visualFrameIdx };
+      case FighterStateName.JumpAir:
+        return { key: 'fighter-jumpair', frame: this.visualFrameIdx };
+      case FighterStateName.AttackLP:
+        return { key: 'fighter-attackLP', frame: Math.min(this.animFrameIdx, 2) };
+      default:
+        return { key: 'fighter-idle', frame: this.visualFrameIdx };
     }
-    return `${this._state}_${String(idx).padStart(4, '0')}.png`;
   }
 
-  // Set the sprite frame and resize the physics body to match the new canvas.
+  // Set the sprite frame and resize the physics body to match the canvas.
   // Assumes the character's feet sit at the bottom-center of each source canvas.
   private applySpriteFrame() {
-    const frameName = this.currentFrameName();
-    this.sprite.setFrame(frameName);
+    const { key, frame } = this.currentTexture();
+    this.sprite.setTexture(key, frame);
     this.sprite.setFlipX(this.facing === -1);
 
     const f   = this.sprite.frame;
@@ -236,7 +221,7 @@ export class Fighter {
     this.body.setSize(FIGHTER.width, FIGHTER.height, false);
     this.body.setOffset(
       (srcW - FIGHTER.width)  / 2,
-      srcH - FIGHTER.height,
+      srcH - FIGHTER.height - 50,
     );
   }
 
@@ -319,7 +304,7 @@ export class Fighter {
     this.facing      = facing;
     this.buffer      = new InputBuffer(INPUT_BUFFER_FRAMES);
 
-    this.sprite = scene.add.sprite(x, y, 'fighter', 'idle_0000.png');
+    this.sprite = scene.add.sprite(x, y, 'fighter-idle', 0);
     scene.physics.add.existing(this.sprite);
     this.body = this.sprite.body as Phaser.Physics.Arcade.Body;
     this.body.setGravityY(FIGHTER.gravity);
