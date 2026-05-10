@@ -58,7 +58,14 @@ export class FightScene extends Phaser.Scene {
     this.load.spritesheet('fighter-walk',     'assets/skele-walk-v2.png',     { frameWidth: 256, frameHeight: 256 });
     this.load.spritesheet('fighter-attackLP', 'assets/skele-attackLP-v2.png', { frameWidth: 256, frameHeight: 256 });
     this.load.spritesheet('fighter-jumpair',      'assets/skele-jumpair-v2.png',      { frameWidth: 256, frameHeight: 256 });
-    this.load.spritesheet('fighter-attackStandHP', 'assets/skele-attackStandHP-v2.png', { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-attackStandHP',  'assets/skele-attackStandHP-v2.png',  { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-attackCrouchLP', 'assets/skele-attackCrouchLP-v02.png', { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-crouch',          'assets/skele-crouch-v2.png',          { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-blockStun',       'assets/skele-blockStun-v2.png',       { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-hitStun',         'assets/skele-hitStun-v2.png',         { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-knockdownGround', 'assets/skele-knockdownGround-v2.png', { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-knockdownFall',   'assets/skele-knockdownfall-v2.png',   { frameWidth: 256, frameHeight: 256 });
+    this.load.spritesheet('fighter-wakeUp',          'assets/skele-wakeUp-v2.png',          { frameWidth: 256, frameHeight: 256 });
   }
 
   create() {

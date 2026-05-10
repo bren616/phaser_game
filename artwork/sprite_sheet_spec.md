@@ -26,19 +26,19 @@
 
 ### No Art Yet (fall back to `idle_0000`)
 
-| Animation | Notes |
-|---|---|
-| `walkBack` | Mirror of walkForward is fine initially |
-| `crouch` | Single held pose |
-| `attackShoryuken` | Rising uppercut (airborne) |
-| `attackThrow` | Grab + toss |
-| `dashForward` | Short dash burst |
-| `dashBack` | Short back dash |
-| `hitStun` | Reeling pose |
-| `blockStun` | Guard pose |
-| `knockdownFall` | Tumbling through air |
-| `knockdownGround` | Lying on ground |
-| `wakeUp` | Getting up |
+| Animation | Frame count | Notes |
+|---|---|---|
+| `walkBack` | same as `walkForward` | Mirror flip in code — no extra art needed |
+| `crouch` | 2 | Transition down + held low pose |
+| `attackShoryuken` | 5 | Windup, launch (2 rising poses), peak, recovery |
+| `attackThrow` | 7 | Reach, grab, lift, toss, opponent airborne, land, recovery |
+| `dashForward` | 4 | Lean, burst/slide, mid-slide, recover |
+| `dashBack` | 4 | Recoil, airborne, descend, land |
+| `hitStun` | 2 | Head-snap impact + sustained reel |
+| `blockStun` | 1 | Single guard pose, held |
+| `knockdownFall` | 4 | Launch, tumble, descend, impact |
+| `knockdownGround` | 1 | Flat on ground, held |
+| `wakeUp` | 4 | Stir, push up, kneel, stand |
 
 ---
 

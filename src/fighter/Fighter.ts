@@ -9,10 +9,12 @@ import { MOTIONS, MotionDetector } from './MotionDetector';
 import { InputSource } from './InputSource';
 
 const LOOPING_FRAME_COUNTS: Partial<Record<FighterStateName, number>> = {
-  [FighterStateName.Idle]:        4,
-  [FighterStateName.WalkForward]: 4,
-  [FighterStateName.WalkBack]:    4,
-  [FighterStateName.JumpAir]:     3,
+  [FighterStateName.Idle]:          4,
+  [FighterStateName.WalkForward]:   4,
+  [FighterStateName.WalkBack]:      4,
+  [FighterStateName.JumpAir]:       3,
+  [FighterStateName.HitStun]:       2,
+  [FighterStateName.KnockdownFall]: 4,
 };
 
 // Game frames between visual frame advances for idle/walk (≈ 5 fps at 60 fps).
@@ -205,6 +207,20 @@ export class Fighter {
         return { key: 'fighter-attackLP', frame: Math.min(this.animFrameIdx, 2) };
       case FighterStateName.AttackStandHP:
         return { key: 'fighter-attackStandHP', frame: Math.min(this.animFrameIdx, 2) };
+      case FighterStateName.Crouch:
+        return { key: 'fighter-crouch', frame: 1 };
+      case FighterStateName.BlockStun:
+        return { key: 'fighter-blockStun', frame: 0 };
+      case FighterStateName.HitStun:
+        return { key: 'fighter-hitStun', frame: this.visualFrameIdx };
+      case FighterStateName.KnockdownGround:
+        return { key: 'fighter-knockdownGround', frame: 0 };
+      case FighterStateName.KnockdownFall:
+        return { key: 'fighter-knockdownFall', frame: this.visualFrameIdx };
+      case FighterStateName.WakeUp:
+        return { key: 'fighter-wakeUp', frame: Math.min(this.animFrameIdx, 3) };
+      case FighterStateName.AttackCrouchLP:
+        return { key: 'fighter-attackCrouchLP', frame: Math.min(this.animFrameIdx, 2) };
       default:
         return { key: 'fighter-idle', frame: this.visualFrameIdx };
     }

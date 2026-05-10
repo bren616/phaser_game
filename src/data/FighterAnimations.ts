@@ -10,7 +10,7 @@ const AIR_HURTBOX    = [{ x: -28, y: -172, w: 56, h: 172 }];
 
 // Hitboxes — all x values are facing-relative (positive = toward opponent).
 const LP_HITBOX        = [{ x: 25, y: -95, w: 50, h: 28  }]; // standing LP fist
-const CROUCH_LP_HITBOX = [{ x: 22, y: -32,  w: 46, h: 22  }]; // low poke near the ground
+const CROUCH_LP_HITBOX = [{ x: 22, y: -57,  w: 46, h: 22  }]; // low poke near the ground
 const HP_HITBOX        = [{ x: 24, y: -108, w: 66, h: 38  }]; // heavy punch: wider, taller
 const SHORYUKEN_HITBOX = [{ x:  8, y: -230, w: 38, h: 120 }]; // tall vertical uppercut arc
 const JUMP_LP_HITBOX   = [{ x: 10, y: -150, w: 42, h: 55  }]; // diving jab — forward and downward reach
@@ -46,9 +46,12 @@ export const FIGHTER_ANIMS: Partial<Record<FighterStateName, AnimDef>> = {
     { duration: 6,  hurtboxes: STAND_HURTBOX, hitboxes: [] }, // recovery
   ],
 
-  // Wake-up: 10 invincible frames while rising from knockdown.
+  // Wake-up: 10 invincible frames, 4 sprite phases (2+3+3+2 = 10).
   [FighterStateName.WakeUp]: [
-    { duration: 10, hurtboxes: STAND_HURTBOX, hitboxes: [] },
+    { duration: 2, hurtboxes: STAND_HURTBOX, hitboxes: [] }, // stir
+    { duration: 3, hurtboxes: STAND_HURTBOX, hitboxes: [] }, // push up
+    { duration: 3, hurtboxes: STAND_HURTBOX, hitboxes: [] }, // kneel
+    { duration: 2, hurtboxes: STAND_HURTBOX, hitboxes: [] }, // stand
   ],
 
   // Blockstun / Hitstun: timer-controlled, single held frame.
@@ -68,9 +71,9 @@ export const FIGHTER_ANIMS: Partial<Record<FighterStateName, AnimDef>> = {
 
   // Crouching LP: 4f startup | 3f active | 8f recovery — low hit, crouching hurtbox throughout
   [FighterStateName.AttackCrouchLP]: [
-    { duration: 4, hurtboxes: CROUCH_HURTBOX, hitboxes: []             },
-    { duration: 3, hurtboxes: CROUCH_HURTBOX, hitboxes: CROUCH_LP_HITBOX, damage: 7, hitstun: 13 },
-    { duration: 8, hurtboxes: CROUCH_HURTBOX, hitboxes: []             },
+    { duration: 8,  hurtboxes: CROUCH_HURTBOX, hitboxes: []                                      },
+    { duration: 6,  hurtboxes: CROUCH_HURTBOX, hitboxes: CROUCH_LP_HITBOX, damage: 7, hitstun: 13 },
+    { duration: 14, hurtboxes: CROUCH_HURTBOX, hitboxes: []                                      },
   ],
 
   // Jump LP: 4f startup | 6f active | 6f recovery — landing cancels remaining recovery.

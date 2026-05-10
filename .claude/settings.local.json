@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(Copy-Item \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\artwork\\\\skele-crouch-v2.png\" \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\public\\\\assets\\\\skele-crouch-v2.png\" -Force)",
+      "Bash(Copy-Item \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\artwork\\\\skele-attackCrouchLP-v02.png\" \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\public\\\\assets\\\\skele-attackCrouchLP-v02.png\" -Force)",
+      "Bash(Write-Output \"done\")",
+      "PowerShell(Copy-Item \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\artwork\\\\skele-crouch-v2.png\" \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\public\\\\assets\\\\skele-crouch-v2.png\" -Force)",
+      "PowerShell(Copy-Item \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\artwork\\\\skele-attackCrouchLP-v02.png\" \"c:\\\\Users\\\\bren3\\\\code\\\\phaser_game\\\\public\\\\assets\\\\skele-attackCrouchLP-v02.png\" -Force)"
     ]
   }
 }
